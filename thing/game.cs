@@ -13,7 +13,14 @@ namespace thing
         private const int HEIGHT = 40;
         private const int BG_NUMLAYERS = 4;
         private const int SP_NUMSPRITES = 1;
-        private enum Speed : int {Slow = 50, Medium = 35, Fast = 25, VeryFast = 10 };
+        private const int DEFAULT_SPEED = 20;
+        private const int SPEED_INCREMENT = 10;
+        private const int MIN_SPEED = 30;
+        private const int MAX_SPEED = 10;
+
+
+        //private enum Speed : int { Slow = 50, Medium = 35, Fast = 25};
+        //private enum Speed : int {Slow = 50, Medium = 35, Fast = 25, VeryFast = 10 };
 
         private const string BGTEST = @"
 00000000001111111111222222222233333333334444444444555555555566666666667777777777
@@ -232,7 +239,12 @@ namespace thing
 ";
 
         private const string SPCAR = @"
-00IMMM;00
+\0IMMM;00
+__[___[__
+";
+
+        private const string SPCARLEFT = @"
+00IMMM;0\
 __[___[__
 ";
 
@@ -257,11 +269,74 @@ YYYY
 
         private const string SPDEER_STAND = @"
 <__~
-0|0| 
+0|0|
 >__~
 0|0|
 ";
+        public class Point
+        {
+            public int X { get; set; }
+            public int Y { get; set; }
 
+            public Point(int x, int y)
+            {
+                X = x;
+                Y = y;
+            }
+        }
+
+
+        public class Bounds
+        {
+            public Point Min { get; set; }
+            public Point Max { get; set; }
+
+            public Bounds(Point min, Point max)
+            {
+                Min = min;
+                Max = max;
+            }
+
+            public static bool Collision ( Bounds a, Bounds b, bool inside = false)
+            {
+                bool result = false;
+                if (inside) // object (a) is inside a box (b); move freely within; collision with walls
+                {
+                    if (a.Min.X < b.Min.X || a.Max.X > b.Max.X || a.Min.Y < b.Min.Y || a.Max.Y > b.Max.Y)
+                    {
+                        result = true;
+
+                    }
+                }
+
+                else // object (a) is outside a box (b); cannot cross into box
+                {
+
+                }
+
+                return result;
+            }
+        }
+
+        class Item
+        {
+            public Point Loc { get; set; }
+            public Point Size { get; set; }
+
+            public Item(int x, int y, int width, int height)
+            {
+                Loc = new Point(x, y);
+                Size = new Point(width, height);
+            }
+
+            public Bounds Bounds()
+            {
+                Point min = Loc;
+                Point max = new Point(Loc.X + Size.X, Loc.Y + Size.Y);
+                Bounds b = new Bounds(min, max);
+                return b;
+            }
+        }
 
         class Background
         {
@@ -305,8 +380,9 @@ YYYY
                 }
             }
 
-            public void Update()
+            public bool Update()
             {
+                bool result = false;
                 if (bgWatch.ElapsedMilliseconds > Interval)
                 {
                     shift++;
@@ -316,8 +392,11 @@ YYYY
                         shift = 0;
                     }
 
+                    result = true;
                     bgWatch.Restart();
                 }
+
+                return result;
             }
 
             public string Shifted()
@@ -395,8 +474,8 @@ YYYY
         {
             public enum Direction : int { Up, Down, Left, Right};
 
-            private int width;
-            private int height;
+            public int Width { get; set; }
+            public int Height { get; set; }
             private string image;
             private int frameSize;
             private int currentFrame;
@@ -404,28 +483,12 @@ YYYY
             public int Interval { get; set; }
             private Stopwatch bgWatch;
 
-            /*
-            private int lowBoundX;
-            private int lowBoundY;
-            private int hiBoundX;
-            private int hiBoundY;
-                private int locx;
-            private int locy;
-            int locx, int locy,
-            int lowBoundX, int lowBoundY, int hiBoundX, int hiBoundY,
-            this.locx = locx;
-            this.locy = locy;
-            this.lowBoundX = lowBoundX;
-            this.hiBoundX = hiBoundX;
-            this.lowBoundY = lowBoundY;
-            this.hiBoundY = hiBoundY;
-            */
 
             public Sprite(string image,  int height, int width, int numFrames, int interval = 10)
             {
                 this.image = image;
-                this.height = height;
-                this.width = width;
+                this.Height = height;
+                this.Width = width;
                 this.frameSize = height * width;
                 this.maxFrames = numFrames;
                 this.currentFrame = 0;
@@ -433,39 +496,6 @@ YYYY
                 this.bgWatch = new Stopwatch();
                 bgWatch.Start();
             }
-
-            /*
-            public void Move(Direction direction)
-            {
-                switch (direction)
-                {
-                    case Direction.Up:
-                        if (locy > lowBoundY)
-                        {
-                            locy--;
-                        }
-                        break;
-                    case Direction.Down:
-                        if (locy < hiBoundY)
-                        {
-                            locy++;
-                        }
-                        break;
-                    case Direction.Left:
-                        if (locx > lowBoundX)
-                        {
-                            locx--;
-                        }
-                        break;
-                    case Direction.Right:
-                        if (locx < hiBoundX)
-                        {
-                            locx++;
-                        }
-                        break;
-                }
-            }
-            */
 
             public void Update()
             {
@@ -482,26 +512,16 @@ YYYY
             }
 
 
-            public string Overlay(string background, int locx, int locy)
+            public string Overlay(string background, Point loc)
             {
-                //TO DO: account for animated sprites with multiple frames!!
-                // known working for single frame!!!!
-                //for (int i = 0; i < height; i++) //for each line of the sprite
-                //{
-                //    string spline = image.Substring(i * width, width);
-                //    string sceneLeft = background.Substring(0, (locy + i) * WIDTH + locx);
-                //    string sceneRight = background.Substring((locy + i) * WIDTH + locx + width, background.Length - width - sceneLeft.Length);
-
-                //    background = sceneLeft + spline + sceneRight;
-                //}
 
                 string frame = image.Substring(currentFrame * frameSize, frameSize);
 
-                for (int i = 0; i < height; i++) //for each line of the sprite
+                for (int i = 0; i < Height; i++) //for each line of the sprite
                 {
-                    string spline = frame.Substring(i * width, width);
-                    string sceneLeft = background.Substring(0, (locy + i) * WIDTH + locx);
-                    string sceneRight = background.Substring((locy + i) * WIDTH + locx + width, background.Length - width - sceneLeft.Length);
+                    string spline = frame.Substring(i * Width, Width);
+                    string sceneLeft = background.Substring(0, (loc.Y + i) * WIDTH + loc.X);
+                    string sceneRight = background.Substring((loc.Y + i) * WIDTH + loc.X + Width, background.Length - Width - sceneLeft.Length);
 
                     background = sceneLeft + spline + sceneRight;
                 }
@@ -515,94 +535,109 @@ YYYY
 
 
         
-        class Animal  // currently hard-coded for a deer
+        class Animal : Item // currently hard-coded for a deer
         {
-            private int x;
-            private int y;
             public enum State : int { Standing, Running};
-            private State currentState;
-            private Stopwatch stateTimer;
-            private Stopwatch runTimer;
-            private Sprite[] sprite;
+            private Stopwatch timer;
+            private int standsForMs = 750;
+            private int runsForMs = 3000;
+            private int roadStepMs = 150;
+            private int lastMs = 0;
 
-            public State CurrentState { get; }
-
-            public Animal(int x, int y)
+            public Animal(int x, int y, int width, int height) : base(x,y,width, height)
             {
-                this.x = x;
-                this.y = y;
-                stateTimer = new Stopwatch();
-                stateTimer.Start();
-                runTimer = new Stopwatch();
-                runTimer.Start();
-                currentState = State.Standing;
-
-                string imgDeerRunning = StripCrlf(SPDEER_RUN).Replace("0", " ");
-                string imgDeerStanding = StripCrlf(SPDEER_STAND).Replace("0", " ");
-
-                sprite = new Sprite[]
-                {
-                    new Sprite(imgDeerRunning, 2, 4, 4, 75),
-                    new Sprite(imgDeerRunning, 2, 4, 2, 500)
-                };
-
+                timer = new Stopwatch();
+                timer.Start();
             }
 
-            public Sprite[] Sprite { get; }
-            public int X { get; }
-            public int Y { get; }
 
-            public void Update()
+
+            public State CurrentState()
             {
-                if (stateTimer.ElapsedMilliseconds > 0 && stateTimer.ElapsedMilliseconds < 2000)
+
+                if (Loc.Y == 12 || Loc.Y == 27)
                 {
-                    currentState = State.Standing;
-                }
-
-                else if (stateTimer.ElapsedMilliseconds >= 2001 && stateTimer.ElapsedMilliseconds < 5000)
-                {
-                    currentState = State.Running;
-                    if (runTimer.ElapsedMilliseconds > 75)
-                    {
-                        if (y > 12)
-                        {
-                            y--;
-                        }
-
-                        if (x > 35)
-                        {
-                            x--;
-                        }
-
-                        runTimer.Restart();
-                    }
-                }
-
-                else if (stateTimer.ElapsedMilliseconds >= 5001 && stateTimer.ElapsedMilliseconds < 7000)
-                {
-                    currentState = State.Standing;
+                    return State.Standing;
                 }
 
                 else
                 {
-                    currentState = State.Running;
+                    return State.Running;
+                }
 
-                    if (stateTimer.ElapsedMilliseconds > 9999)
+            }
+
+            public void Update()
+            {
+                int stoodAtBottom = standsForMs;
+                int ranToTop = standsForMs + runsForMs;
+                int stoodAtTop = standsForMs * 2 + runsForMs;
+                int ranToBottom = standsForMs * 2 + runsForMs * 2;
+
+                if (Loc.X < 1)
+                {
+                    Loc.X = 75;
+                }
+
+                if (timer.ElapsedMilliseconds >= stoodAtBottom && timer.ElapsedMilliseconds < ranToTop && timer.ElapsedMilliseconds > lastMs + roadStepMs)
+                {
+                    Loc.Y--;
+
+                    if (Loc.Y < 12)
                     {
-                        stateTimer.Restart();
+                        Loc.Y = 12;
                     }
+
+                    lastMs = (int)timer.ElapsedMilliseconds;
+
+                }
+
+                else if (timer.ElapsedMilliseconds >= stoodAtTop && timer.ElapsedMilliseconds < ranToBottom && timer.ElapsedMilliseconds > lastMs + roadStepMs)
+                {
+                    Loc.Y++;
+
+                    if (Loc.Y > 27)
+                    {
+                        Loc.Y = 27;
+                    }
+
+                    lastMs = (int)timer.ElapsedMilliseconds;
+                }
+
+                else if (timer.ElapsedMilliseconds >= ranToBottom)
+                {
+                    timer.Restart();
+                    Loc.Y = 27;
+                    lastMs = 0;
                 }
             }
 
         } //END nested class Animal
 
 
+        class PlayerCar : Item
+        {
+            public PlayerCar(int x, int y, int width, int height) : base(x, y, width, height)
+            {
+
+            }
+
+            public int Speed { get; set; }
+        }
+
         private Background[] bg = new Background[BG_NUMLAYERS];
         private string scene;
         private Sprite[] sprite = new Sprite[SP_NUMSPRITES];
-        private Sprite player;
-        private Animal animal;
+        private Sprite car;
+        private Sprite deerRunning;
+        private Sprite deerStanding;
+        private Sprite car_left;
 
+        private PlayerCar pc;
+        private PlayerCar npcCar;
+        private Animal npcDeer;
+
+        public Bounds road;
 
         public static string StripCrlf(string inString)
         {
@@ -619,38 +654,40 @@ YYYY
             string bgRoad = CP437.Promote(StripCrlf(BGROAD), "`").Replace("`", " ");
             string bgFront = CP437.Promote(StripCrlf(BGFRONT), "`").Replace("`", " ");
             
-            bg[0] = new Background(bgFar, (int)Speed.Slow);
-            bg[1] = new Background(bgNear, (int)Speed.Medium);
-            bg[2] = new Background(bgRoad, (int)Speed.Fast);
-            bg[3] = new Background(bgFront, (int)Speed.VeryFast);
+            //init backgrounds
+            bg[0] = new Background(bgFar, (int)DEFAULT_SPEED + 30);
+            bg[1] = new Background(bgNear, (int)DEFAULT_SPEED + 15);
+            bg[2] = new Background(bgRoad, (int)DEFAULT_SPEED);
+            bg[3] = new Background(bgFront, (int)DEFAULT_SPEED - 15);
 
             //starting with pre-defined sprite constants...
             //strip Crlf, replace zeroes with spaces, and promote other bytes to their high order (+128) CP437 counterparts
             string imgCar = CP437.Promote(StripCrlf(SPCAR), "0").Replace("0", " ");
+            string imgCarLeft = CP437.Promote(StripCrlf(SPCARLEFT), "0").Replace("0", " ");
+            string imgDeerStanding = StripCrlf(SPDEER_STAND).Replace("0", " ");
+            string imgDeerRunning = StripCrlf(SPDEER_RUN).Replace("0", " ");
 
-            animal = new Animal(55, 27);
+            //init sprites
+            car = new Sprite(imgCar, 2, 9, 1);
+            car_left = new Sprite(imgCarLeft, 2, 9, 1);
+            deerStanding = new Sprite(imgDeerStanding, 2, 4, 2, 750);
+            deerRunning = new Sprite(imgDeerRunning, 2, 4, 4, 150);
 
-            /*
-            player = new Sprite(
-                imgCar,      //image
-                20,         //locx
-                20,         //locy
-                2,          //height
-                9,          //width
-                0,          //lowBoundX
-                12,         //lowBoundY
-                WIDTH - 9,  //hiBoundX
-                29 - 2,     //hiBoundY
-                1           //num frames
-                );
-                */
+            //init game characters
+            pc = new PlayerCar(20, 20, car.Width, car.Height);
+            pc.Speed = DEFAULT_SPEED;
+            npcDeer = new Animal(75, 27, deerStanding.Width, deerStanding.Height); // was x = 55
+            npcCar = new PlayerCar(70, 15, car.Width, car.Height);
 
+            //init boundaries
+            Point roadMin = new Point(0, 12);
+            Point roadMax = new Point(79, 29);
+            road = new Bounds(roadMin, roadMax); 
 
         }
 
         private void DrawScene()
         {
-
             // start by layering background layers
             scene = bg[0].Shifted();
             for (int i = 1; i < BG_NUMLAYERS; i++)
@@ -658,30 +695,57 @@ YYYY
                 scene = Background.Overlay(scene, bg[i].Shifted());
             }
 
-            // add sprites
-            //scene = player.Overlay(scene);
-            //scene = spDeer.Overlay(scene);
-            scene = animal.Sprite[(int)animal.CurrentState].Overlay(scene, animal.X, animal.Y);
+            // add player car
+            scene = car.Overlay(scene, pc.Loc);
 
+            // add deer NPC
+            if (npcDeer.CurrentState() == Animal.State.Running)
+            {
+                scene = deerRunning.Overlay(scene, npcDeer.Loc);
+            }
+
+            else
+            {
+                scene = deerStanding.Overlay(scene, npcDeer.Loc);
+            }
+
+            // add oncoming car
+            scene = car_left.Overlay(scene, npcCar.Loc);
+            
         }
 
 
         private void Update()
         {
-            // do ai action
-
-
+            // adjust background speeds per player speed
+            bg[0].Interval = (int)pc.Speed + SPEED_INCREMENT * 2;
+            bg[1].Interval = (int)pc.Speed + SPEED_INCREMENT;
+            bg[2].Interval = (int)pc.Speed;
+            bg[3].Interval = (int)pc.Speed - SPEED_INCREMENT;
 
             // update background parallax scrolling
+
+            bool roadShifted = false;
             for (int i = 0; i < BG_NUMLAYERS; i++)
             {
-                bg[i].Update();
+                bool bgShifted = bg[i].Update();
+                if (i == 2)
+                {
+                    roadShifted = bgShifted;
+                }
             }
 
+            // do ai action & scroll sprites synchronous to pc.Speed
+            if (roadShifted)
+            {
+                npcDeer.Loc.X--;
+                npcCar.Loc.X--;
+            }
+            npcDeer.Update();
+
             // update sprite animation frames
-            //spDeer.Update();
-            animal.Update();
-            
+            deerStanding.Update();
+            deerRunning.Update();
 
         }
 
@@ -712,7 +776,6 @@ YYYY
             Console.SetBufferSize(WIDTH, HEIGHT);
 
             ConsoleKeyInfo pressed;
-
          
             do //outer loop processes input & continues inner loop
             {
@@ -728,17 +791,36 @@ YYYY
                 switch (pressed.Key)
                 {
                     case ConsoleKey.UpArrow:
-                        //player.Move(Sprite.Direction.Up);
+                        pc.Loc.Y--;
+                        if (Bounds.Collision(pc.Bounds(), road, true))
+                        {
+                            pc.Loc.Y = road.Min.Y;
+                        }
+
                         break;
 
                     case ConsoleKey.DownArrow:
-                        //player.Move(Sprite.Direction.Down);
+                        pc.Loc.Y++;
+                        if (Bounds.Collision(pc.Bounds(), road, true))
+                        {
+                            pc.Loc.Y = road.Max.Y - pc.Size.Y;
+                        }
                         break;
 
                     case ConsoleKey.LeftArrow:
+                        pc.Speed += SPEED_INCREMENT;
+                        if (pc.Speed > MIN_SPEED) //higher speed in ms is slower
+                        {
+                            pc.Speed = MIN_SPEED;
+                        }
                         break;
 
                     case ConsoleKey.RightArrow:
+                        pc.Speed -= SPEED_INCREMENT;
+                        if (pc.Speed < MAX_SPEED) //lower speed in ms is faster
+                        {
+                            pc.Speed = MAX_SPEED;
+                        }
                         break;
                 }
 

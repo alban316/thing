@@ -4,3 +4,9 @@ C:\Users\jbrugger\repo\thing\thing\bin\Debug\thing.pdb
 C:\Users\jbrugger\repo\thing\thing\obj\Debug\thing.csprojResolveAssemblyReference.cache
 C:\Users\jbrugger\repo\thing\thing\obj\Debug\thing.exe
 C:\Users\jbrugger\repo\thing\thing\obj\Debug\thing.pdb
+C:\Users\jason\repo\thing\thing\bin\Debug\thing.exe.config
+C:\Users\jason\repo\thing\thing\obj\Debug\thing.csprojResolveAssemblyReference.cache
+C:\Users\jason\repo\thing\thing\bin\Debug\thing.exe
+C:\Users\jason\repo\thing\thing\bin\Debug\thing.pdb
+C:\Users\jason\repo\thing\thing\obj\Debug\thing.exe
+C:\Users\jason\repo\thing\thing\obj\Debug\thing.pdb
